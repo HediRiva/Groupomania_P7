@@ -1,12 +1,20 @@
-const User = require('../models/User');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
+const cryptoJs = require('crypto-js');
+
+require('dotenv').config();
+
+const User = require('../models/User');
 
 exports.signup = (req, res, next) => {
+  const cryptedEmail = cryptoJs
+    .HmacSHA256(req.body.email, process.env.SECRET_EMAIL_KEY)
+    .toString();
   bcrypt
     .hash(req.body.password, 10)
     .then((hash) => {
       const user = new User({
-        email: req.body.email,
+        email: cryptedEmail,
         password: hash,
       });
       user
@@ -18,7 +26,10 @@ exports.signup = (req, res, next) => {
 };
 
 exports.login = (req, res, next) => {
-  User.findOne({ email: req.body.email })
+  const cryptedEmail = cryptoJs
+    .HmacSHA256(req.body.email, process.env.SECRET_EMAIL_KEY)
+    .toString();
+  User.findOne({ email: cryptedEmail })
     .then((user) => {
       if (!user) {
         return res.status(401).json({ error: 'Utilisateur non trouvé !' });
@@ -31,7 +42,7 @@ exports.login = (req, res, next) => {
           }
           res.status(200).json({
             userId: user._id,
-            token: jwt.sign({ userId: user._id }, 'RANDOM_TOKEN_SECRET', {
+            token: jwt.sign({ userId: user._id }, process.env.SECRET_TOKEN, {
               expiresIn: '24h',
             }),
           });
