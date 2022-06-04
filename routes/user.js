@@ -4,8 +4,11 @@ const router = express.Router();
 
 const userCtrl = require('../controllers/user');
 const password = require('../middleware/password');
+const auth = require('../middleware/auth');
 
 router.post('/signup', password, userCtrl.signup);
 router.post('/login', userCtrl.login);
+router.delete('/:id', auth, userCtrl.deleteUser);
+router.put('/:id', auth, userCtrl.modifyUser);
 
 module.exports = router;
