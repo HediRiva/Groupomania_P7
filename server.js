@@ -48,4 +48,8 @@ server.on('listening', () => {
   console.log('Listening on ' + bind);
 });
 
+app.all('*', (req, res) => {
+  res.status(404).json({ message: 'Page not found' });
+});
+
 server.listen(port);

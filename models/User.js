@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const uniqueValidator = require('mongoose-unique-validator');
 
-const userSchema = mongoose.Schema(
+const userSchema = new mongoose.Schema(
   {
     lastName: { type: String, required: true },
     firstName: { type: String, required: true },
@@ -15,6 +15,7 @@ const userSchema = mongoose.Schema(
     followers: { type: [String] },
     following: { type: [String] },
     likes: { type: [String] },
+    dislikes: { type: [String] },
   },
   {
     timestamps: true,

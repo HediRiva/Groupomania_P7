@@ -1,11 +1,12 @@
 const mongoose = require('mongoose');
 
-const postSchema = mongoose.Schema(
+const postSchema = new mongoose.Schema(
   {
-    publisherId: { type: String, required: true },
+    userId: { type: String, required: true },
     message: { type: String, maxlength: 400 },
     picture: { type: String },
     likers: { type: [String], required: true },
+    dislikers: { type: [String], required: true },
     comments: {
       type: [
         {
