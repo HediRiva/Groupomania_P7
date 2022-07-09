@@ -4,6 +4,13 @@ const ObjectId = require('mongoose').Types.ObjectId;
 
 const fs = require('fs');
 
+exports.readPost = (req, res, next) => {
+  Post.find((error, data) => {
+    if (!error) res.status(200).json(data);
+    else res.status(400).json('error to get data : ' + error);
+  }).sort({ createdAt: -1 });
+};
+
 exports.createPost = async (req, res) => {
   const newPost = new Post({
     userId: req.body.userId,
@@ -40,22 +47,6 @@ exports.deletePost = (req, res, next) => {
     if (!error) res.json({ message: 'Post deleted' });
     else console.log('Delete error : ' + error);
   });
-  // User.updateOne(
-  //   { _id: req.body.id },
-  //   { $pull: { likes: req.body.id }, $inc: { likers: -1 } }
-  // );
-};
-
-exports.getOnePost = (req, res, next) => {
-  Post.findOne({ _id: req.params.id })
-    .then((post) => res.status(200).json(post))
-    .catch((error) => res.status(404).json({ error }));
-};
-
-exports.getAllPosts = (req, res, next) => {
-  Post.find()
-    .then((post) => res.status(200).json(post))
-    .catch((error) => res.status(400).json({ error }));
 };
 
 exports.likePost = async (req, res) => {
@@ -143,14 +134,46 @@ exports.commentPost = (req, res) => {
 exports.editCommentPost = (req, res) => {
   if (!ObjectId.isValid(req.params.id))
     return res.status(400).json('Unknown ID : ' + req.params.id);
+  try {
+    return Post.findById(req.params.id, (error, data) => {
+      const commentToEdit = data.comments.find((comment) =>
+        comment._id.equals(req.body.commentId)
+      );
+      if (!commentToEdit)
+        return res.status(404).json('Comment not found : ' + error);
+      commentToEdit.text = req.body.text;
 
-  Post.findByIdAndUpdate(
-    commentId,
-    { $set: editedComment },
-    { new: true },
-    (error, data) => {
-      if (!error) return res.status(200).json(data);
-      else return res.status(400).json({ message: error });
-    }
-  );
+      return data.save((error) => {
+        if (!error) return res.status(200).json(data);
+        return res.status(500).json({ message: error });
+      });
+    });
+  } catch (error) {
+    return res.status(400).json({ message: error });
+  }
+};
+
+exports.deleteCommentPost = (req, res) => {
+  if (!ObjectId.isValid(req.params.id))
+    return res.status(400).json('Unknown ID : ' + req.params.id);
+
+  try {
+    return Post.findByIdAndUpdate(
+      req.params.id,
+      {
+        $pull: {
+          comments: {
+            _id: req.body.commentId,
+          },
+        },
+      },
+      { new: true },
+      (error, data) => {
+        if (!error) res.status(200).json(data);
+        else return res.status(400).json({ message: error });
+      }
+    );
+  } catch (error) {
+    return res.status(400).json({ message: error });
+  }
 };
