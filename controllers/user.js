@@ -1,31 +1,47 @@
 const fs = require('fs');
 
 const User = require('../models/User');
+const ObjectId = require('mongoose').Types.ObjectId;
 
-exports.modifyUser = (req, res, next) => {
-  User.updateOne(
-    { _id: req.params.id },
-    {
-      firstName: req.body.firstName,
-      lastName: req.body.lastName,
-      picture: req.body.picture,
-      bio: req.body.bio,
-      _id: req.params.id,
-    }
-  )
-    .then(() => res.status(200).json({ message: 'User modified !' }))
-    .catch((error) => res.status(400).json({ message: 'Invalid request !' }));
+exports.getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find().select('-password');
+    return res.status(200).json(users);
+  } catch (error) {
+    return res.status(400).json({ message: error });
+  }
 };
 
-exports.deleteUser = (req, res, next) => {
-  User.findOne({ _id: req.params.id })
-    .then((User) => {
-      const filename = User.picture.split('/images/')[1];
-      fs.unlink(`images/profile/${filename}`, () => {
-        User.deleteOne({ _id: req.params.id })
-          .then(() => res.status(200).json({ message: 'User deleted !' }))
-          .catch(() => res.status(400).json({ error }));
-      });
-    })
-    .catch((error) => res.status(500).json({ error: 'Invalid request !' }));
+exports.getOneUser = (req, res) => {
+  if (!ObjectId.isValid(req.params.id))
+    return res.status(400).json('Unknown ID : ' + req.params.id);
+  User.findById(req.params.id, (err, data) => {
+    if (!err) res.json(data);
+    else console.log('Unknown ID : ' + err);
+  }).select('-password');
+};
+
+exports.modifyUser = async (req, res) => {
+  if (!ObjectId.isValid(req.body.id))
+    return res.status(400).json('Unknown ID : ' + req.body.id);
+  try {
+    const user = await User.findById(req.body.userId);
+    user.bio = req.body.bio;
+    await user.save();
+    res.status(200).json({ message: 'Bio updated' });
+  } catch (error) {
+    res.status(500).json({ error: 'Invalid request !' });
+  }
+};
+
+exports.deleteUser = async (req, res) => {
+  if (!ObjectId.isValid(req.body.userId))
+    return res.status(400).json('Unknown ID : ' + req.body.userId);
+  try {
+    const user = await User.findById(req.body.userId);
+    await user.remove();
+    res.status(200).json({ message: 'User deleted' });
+  } catch (error) {
+    res.status(500).json({ error: 'Invalid request !' });
+  }
 };

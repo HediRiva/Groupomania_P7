@@ -6,11 +6,17 @@ const postCtrl = require('../controllers/post');
 const auth = require('../middleware/auth');
 const multer = require('../middleware/multer-config');
 
+//Posts
 router.post('/', auth, multer, postCtrl.createPost);
-router.put('/:id', auth, multer, postCtrl.modifyPost);
-router.delete('/:id', auth, postCtrl.deletePost);
-router.get('/:id', auth, postCtrl.getOnePost);
-router.get('/', auth, postCtrl.getAllPosts);
-// router.post('/like/:id', postCtrl.likePost);
+router.put('/', auth, multer, postCtrl.modifyPost);
+router.delete('/', auth, postCtrl.deletePost);
+router.get('/:id', postCtrl.getOnePost);
+router.get('/', postCtrl.getAllPosts);
+router.patch('/like/:id', postCtrl.likePost);
+router.patch('/unlike/:id', postCtrl.unlikePost);
+
+//Comments
+router.patch('/comment-post/:id', postCtrl.commentPost);
+router.patch('/edit-comment-post/:id', postCtrl.editCommentPost);
 
 module.exports = router;

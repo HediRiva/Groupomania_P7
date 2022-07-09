@@ -6,12 +6,11 @@ const postSchema = new mongoose.Schema(
     message: { type: String, maxlength: 400 },
     picture: { type: String },
     likers: { type: [String], required: true },
-    dislikers: { type: [String], required: true },
     comments: {
       type: [
         {
-          commentPublisherId: String,
-          commentPublisherPseudo: String,
+          commenterId: String,
+          commenterPseudo: String,
           text: String,
           timestamp: Number,
         },

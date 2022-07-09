@@ -1,49 +1,49 @@
 const Post = require('../models/Post');
 const User = require('../models/User');
+const ObjectId = require('mongoose').Types.ObjectId;
 
 const fs = require('fs');
 
-exports.createPost = (req, res, next) => {
-  const post = new Post({
+exports.createPost = async (req, res) => {
+  const newPost = new Post({
     userId: req.body.userId,
     message: req.body.message,
     picture: req.body.picture,
-    likers: [''],
-    comments: [{}],
+    likers: [],
+    comments: [],
   });
-  post
-    .save()
-    .then(() => res.status(201).json({ message: 'Post created !' }))
-    .catch((error) => res.status(400).json({ error }));
+  try {
+    const post = await newPost.save();
+    return res.status(201).json({ message: 'Post created !' });
+  } catch (error) {
+    return res.status(400).json({ message: error });
+  }
 };
 
 exports.modifyPost = (req, res, next) => {
-  Post.updateOne(
-    { _id: req.params.id },
-    {
-      ...req.body,
-      _id: req.params.id,
+  const updatedRecord = {
+    message: req.body.message,
+  };
+  Post.findByIdAndUpdate(
+    req.body.id,
+    { $set: updatedRecord },
+    { new: true },
+    (error, data) => {
+      if (!error) res.json(data);
+      else console.log('Update error : ' + error);
     }
-  )
-    .then(() => res.status(200).json({ message: 'Modified post !' }))
-    .catch((error) => res.status(400).json({ error }));
+  );
 };
 
 exports.deletePost = (req, res, next) => {
-  Post.findOne({ _id: req.params.id })
-    .then((Post) => {
-      const filename = Post.picture.split('/images/')[1];
-      fs.unlink(`images/${filename}`, () => {
-        Post.deleteOne({ _id: req.params.id });
-        User.updateOne(
-          { _id: req.body.id },
-          { $pull: { likes: req.body.id }, $inc: { likers: -1 } }
-        )
-          .then((post) => res.status(200).json({ message: 'Post deleted !' }))
-          .catch((error) => res.status(400).json({ error }));
-      });
-    })
-    .catch(() => res.status(500).json({ message: 'Invalid request !' }));
+  Post.findByIdAndRemove(req.body.id, (error, data) => {
+    if (!error) res.json({ message: 'Post deleted' });
+    else console.log('Delete error : ' + error);
+  });
+  // User.updateOne(
+  //   { _id: req.body.id },
+  //   { $pull: { likes: req.body.id }, $inc: { likers: -1 } }
+  // );
 };
 
 exports.getOnePost = (req, res, next) => {
@@ -58,67 +58,99 @@ exports.getAllPosts = (req, res, next) => {
     .catch((error) => res.status(400).json({ error }));
 };
 
-// exports.likePost = (req, res, next) => {
-//   if (req.body.like == 1) {
-//     Post.updateOne(
-//       { _id: req.params.id },
-//       { $push: { likers: req.body.id }, $inc: { likes: +1 } }
-//     );
-//     User.updateOne(
-//       { _id: req.body.id },
-//       { $push: { likes: req.params.id }, $inc: { likers: +1 } }
-//     )
-//       .then(() => res.status(200).json({ message: 'Post liked !' }))
-//       .catch((error) => res.status(400).json({ error }));
-//   }
+exports.likePost = async (req, res) => {
+  if (!ObjectId.isValid(req.params.id))
+    return res.status(400).json('Unknown ID : ' + req.params.id);
+  try {
+    await Post.findByIdAndUpdate(
+      req.params.id,
+      {
+        $addToSet: { likers: req.body.userId },
+      },
+      { new: true }
+    )
+      .then((data) => res.json(data))
+      .catch((error) => res.status(500).json({ message: error }));
 
-//   if (req.body.like == 0) {
-//     Post.findOne({ _id: req.params.id })
-//       .then((Post) => {
-//         if (Post.likers.includes(req.body.id)) {
-//           Post.updateOne(
-//             { _id: req.params.id },
-//             { $pull: { likers: req.body.id }, $inc: { likes: -1 } }
-//           );
-//           User.updateOne(
-//             { _id: req.body.id },
-//             { $pull: { likes: req.body.id }, $inc: { likers: -1 } }
-//           )
-//             .then(() => res.status(200).json({ message: 'Like removed !' }))
-//             .catch((error) => res.status(400).json({ error }));
-//         }
-//         if (Post.dislikers.includes(req.body.id)) {
-//           Post.updateOne(
-//             { _id: req.params.id },
-//             {
-//               $pull: { dislikers: req.body.id },
-//               $inc: { dislikes: -1 },
-//             }
-//           );
-//           User.updateOne(
-//             { _id: req.body.id },
-//             {
-//               $pull: { dislikes: req.body.id },
-//               $inc: { dislikers: -1 },
-//             }
-//           )
-//             .then(() => res.status(200).json({ message: 'Like removed !' }))
-//             .catch((error) => res.status(404).json({ error }));
-//         }
-//       })
-//       .catch((error) => res.status(400).json({ error }));
-//   }
+    await User.findByIdAndUpdate(
+      req.body.userId,
+      {
+        $addToSet: { likes: req.params.id },
+      },
+      { new: true }
+    )
+      .then((data) => res.json(data))
+      .catch((error) => res.status(500).json({ message: error }));
+  } catch (error) {
+    return res.status(400).json({ message: error });
+  }
+};
 
-//   if (req.body.like == -1) {
-//     Post.updateOne(
-//       { _id: req.params.id },
-//       { $push: { dislikers: req.body.id }, $inc: { dislikes: +1 } }
-//     );
-//     User.updateOne(
-//       { _id: req.body.id },
-//       { $push: { dislikes: req.body.id }, $inc: { dislikers: +1 } }
-//     )
-//       .then(() => res.status(200).json({ message: 'Post disliked !' }))
-//       .catch((error) => res.status(400).json({ error }));
-//   }
-// };
+exports.unlikePost = async (req, res) => {
+  if (!ObjectId.isValid(req.params.id))
+    return res.status(400).json('Unknown ID : ' + req.params.id);
+  try {
+    await Post.findByIdAndUpdate(
+      req.params.id,
+      {
+        $pull: { likers: req.body.userId },
+      },
+      { new: true }
+    )
+      .then((data) => res.json(data))
+      .catch((error) => res.status(500).json({ message: error }));
+
+    await User.findByIdAndUpdate(
+      req.body.userId,
+      {
+        $pull: { likes: req.params.id },
+      },
+      { new: true }
+    )
+      .then((data) => res.json(data))
+      .catch((error) => res.status(500).json({ message: error }));
+  } catch (error) {
+    return res.status(400).json({ message: error });
+  }
+};
+
+exports.commentPost = (req, res) => {
+  if (!ObjectId.isValid(req.params.id))
+    return res.status(400).json('Unknown ID : ' + req.params.id);
+
+  try {
+    return Post.findByIdAndUpdate(
+      req.params.id,
+      {
+        $push: {
+          comments: {
+            commenterId: req.body.commenterId,
+            commenterPseudo: req.body.commenterPseudo,
+            text: req.body.text,
+            timestamp: new Date().getTime(),
+          },
+        },
+      },
+      { new: true }
+    )
+      .then((data) => res.json(data))
+      .catch((error) => res.status(400).json({ message: error }));
+  } catch (error) {
+    return res.status(400).json({ message: error });
+  }
+};
+
+exports.editCommentPost = (req, res) => {
+  if (!ObjectId.isValid(req.params.id))
+    return res.status(400).json('Unknown ID : ' + req.params.id);
+
+  Post.findByIdAndUpdate(
+    commentId,
+    { $set: editedComment },
+    { new: true },
+    (error, data) => {
+      if (!error) return res.status(200).json(data);
+      else return res.status(400).json({ message: error });
+    }
+  );
+};

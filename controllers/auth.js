@@ -4,12 +4,6 @@ const cryptoJs = require('crypto-js');
 const User = require('../models/User');
 require('dotenv').config();
 
-const createToken = (id) => {
-  return jwt.sign({ id }, process.env.SECRET_TOKEN, {
-    expiresIn: '24h',
-  });
-};
-
 exports.signup = (req, res, next) => {
   const cryptedEmail = cryptoJs
     .HmacSHA256(req.body.email, process.env.SECRET_EMAIL_KEY)
@@ -18,8 +12,7 @@ exports.signup = (req, res, next) => {
     .hash(req.body.password, 10)
     .then((hash) => {
       const user = new User({
-        lastName: req.body.lastName,
-        firstName: req.body.firstName,
+        pseudo: req.body.pseudo,
         email: cryptedEmail,
         password: hash,
       });
@@ -47,16 +40,18 @@ exports.login = (req, res, next) => {
           if (!valid) {
             return res.status(401).json({ error: 'Wrong password !' });
           }
-          const token = createToken(user._id);
-          res.cookie('jwt', token, { httpOnly: true });
-          res.status(200).json({ userId: user._id });
+
+          res.status(200).json({
+            userId: user._id,
+            token: jwt.sign({ userId: user._id }, process.env.SECRET_TOKEN),
+          });
         })
         .catch((error) => res.status(500).json({ error }));
     })
     .catch((error) => res.status(500).json(error));
 };
 
-exports.logout = (req, res, next) => {
-  res.cookie('jwt', '', { expiresIn: '1s' });
-  res.redirect('/');
-};
+// exports.logout = (req, res, next) => {
+//   res.headers.authorization('');
+//   res.status(200).json({ message: 'Logged out user !' });
+// };
